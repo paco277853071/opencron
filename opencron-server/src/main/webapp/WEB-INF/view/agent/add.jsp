@@ -13,11 +13,8 @@
 
             status:true,
 
-            pingDone:false,
-
             init:function () {
                 this.status = true;
-                this.pingDone = false;
             },
 
             name:function () {
@@ -33,8 +30,8 @@
                         var _this = this;
                         $.ajax({
                             headers: {"csrf": "${csrf}"},
-                            type: "POST",
                             url: "${contextPath}/agent/checkname.do",
+                            type: "POST",
                             data: {
                                 "name": _name
                             }
@@ -106,7 +103,7 @@
 
             warning:function () {
                 var _warning = $('input[type="radio"][name="warning"]:checked').val();
-                if(_warning == "1") {
+                if ( _warning == "1" ) {
                     this.mobiles();
                     this.email();
                 }
@@ -138,7 +135,7 @@
                 }
             },
 
-            ping:function() {
+            ping:function(callback) {
                 $("#pingResult").html("<img src='${contextPath}/static/img/icon-loader.gif'> <font color='#2fa4e7'>检测中...</font>");
                 var _ping = $('input[type="radio"][name="proxy"]:checked').val();
                 var proxyId = null;
@@ -148,48 +145,45 @@
                 var _this=this;
                 $.ajax({
                     headers: {"csrf": "${csrf}"},
-                    type: "POST",
                     url: "${contextPath}/verify/ping.do",
+                    type: "POST",
+                    dataType:"json",
                     data: {
                         "proxy": _ping || 0,
                         "proxyId": proxyId,
                         "ip":$("#ip").val(),
                         "port": $("#port").val(),
                         "password": calcMD5($("#password").val())
-                    },
-                    dataType:"JSON"
+                    }
                 }).done(function (data) {
                     if (data) {
                         $.ajax({
                             headers: {"csrf": "${csrf}"},
-                            type: "POST",
                             url: "${contextPath}/verify/guid.do",
+                            type: "POST",
+                            dataType:"html",
                             data: {
                                 "proxy": _ping || 0,
                                 "proxyId": proxyId,
                                 "ip":$("#ip").val(),
                                 "port": $("#port").val(),
                                 "password": calcMD5($("#password").val())
-                            },
-                            dataType:"html",
-                            success:function(data) {
-                                _this.pingDone = true;
-                                $("#machineId").val(data);
-                            },
-                            error:function () {
-                                _this.pingDone = true;
                             }
+                        }).done(function (data) {
+                            $("#machineId").val(data);
+                            if(callback){
+                                callback();
+                            }
+                        }).fail(function () {
+                            opencron.tipOk("#port");
                         });
-                        opencron.tipOk("#port");
                     } else {
                         opencron.tipError("#port","通信失败");
                         _this.status=false;
-                        _this.pingDone = true;
                     }
                 }).fail(function () {
                     opencron.tipError("#port","通信失败");
                     _this.status=false;
-                    _this.pingDone = true;
                 });
             },
             
@@ -200,7 +194,6 @@
                 validata.password();
                 validata.port();
                 validata.warning();
-                validata.ping();
                 return this.status;
             }
 
@@ -245,15 +238,14 @@
             });
 
             $("#saveBtn").click(function () {
-                validata.verify();
-                var valId = setInterval(function () {
-                    if (validata.pingDone) {
-                        window.clearInterval(valId);
-                        if(validata.status) {
-                            $("#agentForm").submit();
-                        }
-                    }
-                },10);
+                //普通字段校验
+                var status = validata.verify();
+                if(status){
+                    //验证连接是否通...
+                    validata.ping(function () {
+                        $("#agentForm").submit()
+                    })
+                }
             });
 
             $("#name").blur(function () {

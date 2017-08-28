@@ -155,33 +155,23 @@ public abstract class HttpUtils {
      * @return
      */
     public static boolean isLocalPortUsing(int port) {
-        return isPortUsing("127.0.0.1", port);
-    }
-
-    /***
-     *  true:端口已被占用  false:端口未被占用
-     * @param host
-     * @param port
-     */
-    public static boolean isPortUsing(String host, int port) {
         boolean flag = true;//端口已被占用
         try {
-            InetAddress Address = InetAddress.getByName(host);
-            Socket socket = new Socket(Address,port);  //建立一个Socket连接
+            ServerSocket socket = new ServerSocket(port);  //建立一个Socket连接
             flag = false;//端口未被占用
             socket.close();
         } catch (IOException e) {
-            e.printStackTrace();
         }
         return flag;
     }
 
-
     public static int freePort() {
         Random random = new Random();
+        int max=65535;
+        int min=1024;
         int port;
         do {
-            port = random.nextInt(65535);
+            port = random.nextInt(max - min + 1) + min;
         } while (isLocalPortUsing(port));
 
         return port;
